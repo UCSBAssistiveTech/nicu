@@ -9,6 +9,33 @@ struct VitalDataPoint: Identifiable {
     let value: Double
 }
 
+// MARK: - Text Outline Modifier
+// This view modifier adds a black outline to any view, making text more readable.
+struct TextOutlineModifier: ViewModifier {
+    let color: Color
+    let width: CGFloat
+
+    func body(content: Content) -> some View {
+        ZStack {
+            // Creates the outline by layering shadows in four directions.
+            content.shadow(color: color, radius: 0, x: width, y: 0)
+            content.shadow(color: color, radius: 0, x: -width, y: 0)
+            content.shadow(color: color, radius: 0, x: 0, y: width)
+            content.shadow(color: color, radius: 0, x: 0, y: -width)
+            // The original content is placed on top.
+            content
+        }
+    }
+}
+
+// Extension to make applying the text outline modifier easier.
+extension View {
+    func textOutline(color: Color, width: CGFloat) -> some View {
+        self.modifier(TextOutlineModifier(color: color, width: width))
+    }
+}
+
+
 // MARK: - Main App Structure
 // This is the entry point of the application.
 
@@ -67,11 +94,12 @@ struct HealthMetricsView: View {
     let timer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        HStack(spacing: 40) {
+        HStack(spacing: 450) { // Increased spacing from 40 to 80
             // Left side: Graphs
             VStack(spacing: 20) {
                 VitalGraphView(title: "Heart Rate (BPM)", data: heartRateHistory, color: .red)
-                VitalGraphView(title: "SpO2 (%)", data: spo2History, color: .blue)
+                // The SpO2 graph is now a histogram.
+                SPO2HistogramView(title: "SpO2 (%)", data: spo2History, color: .blue)
                 BloodPressureGraphView(systolicData: bpSystolicHistory, diastolicData: bpDiastolicHistory)
             }
             .padding(30)
@@ -156,13 +184,13 @@ struct HealthMetricView: View {
         HStack {
             Image(systemName: icon).font(.largeTitle).foregroundColor(color).frame(width: 60)
             VStack(alignment: .leading) {
-                Text(name).font(.title2).foregroundColor(.secondary)
-                Text(value).font(.system(size: 50, weight: .bold)).foregroundColor(color).contentTransition(.numericText())
+                Text(name).font(.title2).foregroundColor(.white).textOutline(color: .black, width: 1)
+                Text(value).font(.system(size: 50, weight: .bold)).foregroundColor(color).contentTransition(.numericText()).textOutline(color: .black, width: 1)
             }
             Spacer()
-            Text(unit).font(.title2).foregroundColor(.secondary).padding(.trailing)
+            Text(unit).font(.title2).foregroundColor(.white).padding(.trailing).textOutline(color: .black, width: 1)
         }
-        .frame(width: 400, height: 100)
+        .frame(width: 350, height: 100) // Decreased width
     }
 }
 
@@ -175,7 +203,7 @@ struct VitalGraphView: View {
 
     var body: some View {
         VStack(alignment: .leading) {
-            Text(title).font(.title2).foregroundColor(.secondary)
+            Text(title).font(.title2).foregroundColor(.white).textOutline(color: .black, width: 1)
             Chart(data) {
                 LineMark(x: .value("Time", $0.date), y: .value("Value", $0.value))
                     .foregroundStyle(color)
@@ -185,9 +213,35 @@ struct VitalGraphView: View {
             .chartYAxis(.hidden)
             .frame(height: 100)
         }
-        .frame(width: 400)
+        .frame(width: 350) // Decreased width
     }
 }
+
+// A new view for the SpO2 histogram.
+struct SPO2HistogramView: View {
+    let title: String
+    let data: [VitalDataPoint]
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text(title).font(.title2).foregroundColor(.white).textOutline(color: .black, width: 1)
+            Chart(data) {
+                // We use BarMark to create the histogram bars.
+                BarMark(
+                    x: .value("Time", $0.date),
+                    y: .value("Value", $0.value)
+                )
+                .foregroundStyle(color)
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis(.hidden)
+            .frame(height: 100)
+        }
+        .frame(width: 350) // Decreased width
+    }
+}
+
 
 // A specific view for the two-line blood pressure graph.
 struct BloodPressureGraphView: View {
@@ -196,7 +250,7 @@ struct BloodPressureGraphView: View {
 
     var body: some View {
         VStack(alignment: .leading) {
-            Text("Blood Pressure (mmHg)").font(.title2).foregroundColor(.secondary)
+            Text("Blood Pressure (mmHg)").font(.title2).foregroundColor(.white).textOutline(color: .black, width: 1)
             Chart {
                 ForEach(systolicData) {
                     LineMark(x: .value("Time", $0.date), y: .value("Systolic", $0.value))
@@ -213,7 +267,7 @@ struct BloodPressureGraphView: View {
             .chartYAxis(.hidden)
             .frame(height: 100)
         }
-        .frame(width: 400)
+        .frame(width: 350) // Decreased width
     }
 }
 
