@@ -88,19 +88,18 @@ struct HealthMetricsView: View {
     // State variables to hold historical data for graphs
     @State private var heartRateHistory: [VitalDataPoint] = []
     @State private var spo2History: [VitalDataPoint] = []
-    @State private var bpSystolicHistory: [VitalDataPoint] = []
-    @State private var bpDiastolicHistory: [VitalDataPoint] = []
+    @State private var mapHistory: [VitalDataPoint] = [] // Changed from two BP arrays to one MAP array
 
     let timer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        HStack(spacing: 450) { // Increased spacing from 40 to 80
+        HStack(spacing: 300) { // Changed spacing to 400
             // Left side: Graphs
             VStack(spacing: 20) {
-                VitalGraphView(title: "Heart Rate (BPM)", data: heartRateHistory, color: .red)
-                // The SpO2 graph is now a histogram.
+                // Heart rate graph moved down one row
                 SPO2HistogramView(title: "SpO2 (%)", data: spo2History, color: .blue)
-                BloodPressureGraphView(systolicData: bpSystolicHistory, diastolicData: bpDiastolicHistory)
+                VitalGraphView(title: "Heart Rate (BPM)", data: heartRateHistory, color: .red)
+                VitalGraphView(title: "Mean Arterial Pressure (mmHg)", data: mapHistory, color: .purple)
             }
             .padding(30)
             .background(.thinMaterial)
@@ -108,8 +107,9 @@ struct HealthMetricsView: View {
 
             // Right side: Vitals Panel
             VStack(spacing: 20) {
-                HealthMetricView(name: "Heart Rate", value: "\(Int(heartRate))", unit: "BPM", icon: "heart.fill", color: colorForHeartRate())
+                // Heart rate metric moved down one row
                 HealthMetricView(name: "SpO2", value: "\(Int(spo2))", unit: "%", icon: "lungs.fill", color: colorForSpO2())
+                HealthMetricView(name: "Heart Rate", value: "\(Int(heartRate))", unit: "BPM", icon: "heart.fill", color: colorForHeartRate())
                 HealthMetricView(name: "Blood Pressure", value: "\(Int(bloodPressureSystolic))/\(Int(bloodPressureDiastolic))", unit: "mmHg", icon: "waveform.path.ecg", color: colorForBloodPressure())
                 HealthMetricView(name: "Temperature", value: String(format: "%.1f", temperature), unit: "°F", icon: "thermometer", color: colorForTemperature())
             }
@@ -158,18 +158,19 @@ struct HealthMetricsView: View {
             }
             if Int.random(in: 1...5) == 1 { temperature = Bool.random() ? Double.random(in: 96.0...97.7) : Double.random(in: 99.2...100.4) } else { temperature = Double.random(in: 97.8...99.1) }
 
+            // Calculate Mean Arterial Pressure (MAP)
+            let map = bloodPressureDiastolic + (bloodPressureSystolic - bloodPressureDiastolic) / 3.0
+
             // Update history arrays
             let now = Date()
             heartRateHistory.append(VitalDataPoint(date: now, value: heartRate))
             spo2History.append(VitalDataPoint(date: now, value: spo2))
-            bpSystolicHistory.append(VitalDataPoint(date: now, value: bloodPressureSystolic))
-            bpDiastolicHistory.append(VitalDataPoint(date: now, value: bloodPressureDiastolic))
+            mapHistory.append(VitalDataPoint(date: now, value: map))
             
             // Keep history to a fixed size
             if heartRateHistory.count > 20 { heartRateHistory.removeFirst() }
             if spo2History.count > 20 { spo2History.removeFirst() }
-            if bpSystolicHistory.count > 20 { bpSystolicHistory.removeFirst() }
-            if bpDiastolicHistory.count > 20 { bpDiastolicHistory.removeFirst() }
+            if mapHistory.count > 20 { mapHistory.removeFirst() }
         }
     }
 }
@@ -184,13 +185,13 @@ struct HealthMetricView: View {
         HStack {
             Image(systemName: icon).font(.largeTitle).foregroundColor(color).frame(width: 60)
             VStack(alignment: .leading) {
-                Text(name).font(.title2).foregroundColor(.white).textOutline(color: .black, width: 1)
-                Text(value).font(.system(size: 50, weight: .bold)).foregroundColor(color).contentTransition(.numericText()).textOutline(color: .black, width: 1)
+                Text(name).font(.title2).foregroundColor(.white).textOutline(color: .gray, width: 1)
+                Text(value).font(.system(size: 60, weight: .bold)).foregroundColor(color).contentTransition(.numericText()).textOutline(color: .gray, width: 1) // Increased font size
             }
             Spacer()
-            Text(unit).font(.title2).foregroundColor(.white).padding(.trailing).textOutline(color: .black, width: 1)
+            Text(unit).font(.title2).foregroundColor(.white).padding(.trailing).textOutline(color: .gray, width: 1)
         }
-        .frame(width: 350, height: 100) // Decreased width
+        .frame(width: 400, height: 100) // Changed width
     }
 }
 
@@ -203,7 +204,7 @@ struct VitalGraphView: View {
 
     var body: some View {
         VStack(alignment: .leading) {
-            Text(title).font(.title2).foregroundColor(.white).textOutline(color: .black, width: 1)
+            Text(title).font(.title2).foregroundColor(.white).textOutline(color: .gray, width: 1)
             Chart(data) {
                 LineMark(x: .value("Time", $0.date), y: .value("Value", $0.value))
                     .foregroundStyle(color)
@@ -213,7 +214,7 @@ struct VitalGraphView: View {
             .chartYAxis(.hidden)
             .frame(height: 100)
         }
-        .frame(width: 350) // Decreased width
+        .frame(width: 400) // Changed width
     }
 }
 
@@ -225,7 +226,7 @@ struct SPO2HistogramView: View {
 
     var body: some View {
         VStack(alignment: .leading) {
-            Text(title).font(.title2).foregroundColor(.white).textOutline(color: .black, width: 1)
+            Text(title).font(.title2).foregroundColor(.white).textOutline(color: .gray, width: 1)
             Chart(data) {
                 // We use BarMark to create the histogram bars.
                 BarMark(
@@ -238,36 +239,7 @@ struct SPO2HistogramView: View {
             .chartYAxis(.hidden)
             .frame(height: 100)
         }
-        .frame(width: 350) // Decreased width
-    }
-}
-
-
-// A specific view for the two-line blood pressure graph.
-struct BloodPressureGraphView: View {
-    let systolicData: [VitalDataPoint]
-    let diastolicData: [VitalDataPoint]
-
-    var body: some View {
-        VStack(alignment: .leading) {
-            Text("Blood Pressure (mmHg)").font(.title2).foregroundColor(.white).textOutline(color: .black, width: 1)
-            Chart {
-                ForEach(systolicData) {
-                    LineMark(x: .value("Time", $0.date), y: .value("Systolic", $0.value))
-                        .foregroundStyle(.orange)
-                        .interpolationMethod(.catmullRom)
-                }
-                ForEach(diastolicData) {
-                    LineMark(x: .value("Time", $0.date), y: .value("Diastolic", $0.value))
-                        .foregroundStyle(.yellow)
-                        .interpolationMethod(.catmullRom)
-                }
-            }
-            .chartXAxis(.hidden)
-            .chartYAxis(.hidden)
-            .frame(height: 100)
-        }
-        .frame(width: 350) // Decreased width
+        .frame(width: 400) // Changed width
     }
 }
 
